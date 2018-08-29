@@ -1,0 +1,218 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>phoneapp-integration-tests</artifactId>
+    <packaging>jar</packaging>
+
+    <parent>
+        <groupId>com.nix.phoneapp</groupId>
+        <artifactId>phone-app</artifactId>
+        <version>0.0.1-SNAPSHOT</version>
+    </parent>
+
+    <name>Phone Application Dockerizer</name>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>io.fabric8</groupId>
+                    <artifactId>docker-maven-plugin</artifactId>
+                    <version>0.26.0</version>
+                </plugin>
+                <plugin>
+                    <artifactId>maven-failsafe-plugin</artifactId>
+                    <version>2.22.0</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+        <plugins>
+            <plugin>
+                <groupId>io.fabric8</groupId>
+                <artifactId>docker-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>build-image</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>build</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>start</id>
+                        <phase>pre-integration-test</phase>
+                        <goals>
+                            <goal>start</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>stop</id>
+                        <phase>post-integration-test</phase>
+                        <goals>
+                            <goal>stop</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                <showLogs>true</showLogs>
+                    <images>
+
+                        <image>
+                            <alias>mysql</alias>
+                            <name>nix-phoneapp/mysql:${project.version}</name>
+                            <build>
+                                <from>mysql:8</from>
+                                <assembly>
+                                    <targetDir>/docker-entrypoint-initdb.d</targetDir>
+                                    <inline xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                                        xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2"
+                                        xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2 http://maven.apache.org/xsd/assembly-1.1.2.xsd">
+                                        <file>
+                                            <source>src/mysql/10-setup.sql</source>
+                                        </file>
+                                        <file>
+                                            <source>src/mysql/20-fill.sql</source>
+                                        </file>
+                                    </inline>
+                                </assembly>
+                                <env>
+                                    <MYSQL_ROOT_PASSWORD>secret</MYSQL_ROOT_PASSWORD>
+                                    <MYSQL_DATABASE>phoneapp</MYSQL_DATABASE>
+                                    <MYSQL_USER>usr</MYSQL_USER>
+                                    <MYSQL_PASSWORD>pass</MYSQL_PASSWORD>
+                                </env>
+                            </build>
+                            <run>
+                                <wait>
+                                    <time>30000</time>
+                                    <log>ready for connections.*port: 3306</log>
+                                </wait>
+                            </run>
+                        </image>
+
+                        <image>
+                            <alias>phones-catalog</alias>
+                            <name>nix-phoneapp/phones-catalog:${project.version}</name>
+                            <build>
+                                <from>openjdk:10</from>
+                                <assembly>
+                                    <targetDir>${container.path}</targetDir>
+                                    <inline xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                                        xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2"
+                                        xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2 http://maven.apache.org/xsd/assembly-1.1.2.xsd">
+                                        <dependencySet>
+                                            <includes>
+                                                <include>${project.groupId}:phones-catalog</include>
+                                            </includes>
+                                            <useProjectArtifact>false</useProjectArtifact>
+                                            <outputFileNameMapping>service.jar</outputFileNameMapping>
+                                        </dependencySet>
+                                    </inline>
+                                </assembly>
+                                <cmd>
+                                    <shell><![CDATA[java --illegal-access=warn -jar ${container.path}/service.jar]]></shell>
+                                </cmd>
+                            </build>
+                            <run>
+                                <ports>
+                                    <port>18080:8080</port>
+                                </ports>
+                                <links>
+                                    <link>mysql:db</link>
+                                </links>
+                                <wait>
+                                    <time>30000</time>
+                                    <log>Started Application</log>
+                                </wait>
+                            </run>
+                        </image>
+
+                        <image>
+                            <alias>orders-book</alias>
+                            <name>nix-phoneapp/orders-book:${project.version}</name>
+                            <build>
+                                <from>openjdk:10</from>
+                                <assembly>
+                                    <targetDir>${container.path}</targetDir>
+                                    <inline xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                                        xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2"
+                                        xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.2 http://maven.apache.org/xsd/assembly-1.1.2.xsd">
+                                        <dependencySet>
+                                            <includes>
+                                                <include>${project.groupId}:orders-book</include>
+                                            </includes>
+                                            <useProjectArtifact>false</useProjectArtifact>
+                                            <outputFileNameMapping>service.jar</outputFileNameMapping>
+                                        </dependencySet>
+                                    </inline>
+                                </assembly>
+                                <cmd>
+                                    <shell><![CDATA[java --illegal-access=warn -jar ${container.path}/service.jar]]></shell>
+                                </cmd>
+                            </build>
+                            <run>
+                                <ports>
+                                    <port>28080:8080</port>
+                                </ports>
+                                <links>
+                                    <link>mysql:db</link>
+                                    <link>phones-catalog:pc</link>
+                                </links>
+                                <wait>
+                                    <time>30000</time>
+                                    <log>Started Application</log>
+                                </wait>
+                            </run>
+                        </image>
+
+                    </images>
+                </configuration>
+            </plugin>
+            <plugin>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+
+    <dependencies>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>phones-catalog</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>orders-book</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.jayway.jsonpath</groupId>
+            <artifactId>json-path</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <properties>
+        <container.path>/opt/phoneapp</container.path>
+    </properties>
+
+</project>
