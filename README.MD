@@ -1,7 +1,7 @@
 
-h1. Phone App
+# Phone App
 
-h2. Assumptions
+## Assumptions
 
 The application is designed with support of pricing changes. When the order is placed, the real prices from phones catalog are used to create the order entries.
 That makes possible to still change the live prices over a time, but the prices on order entries will remain as originally shown to the customer during the order placement.
@@ -15,11 +15,11 @@ The phone name is considered as unique business key of the Phone entities.
 
 There are some javadocs and inline comments on key classes with more explanation.
 
-h2. Build
+## Build
 
 In order to build the docker images issue the following
 
-bc. mvn clean package 
+```mvn clean package```
 
 This will create images for the system:
 
@@ -28,11 +28,11 @@ This will create images for the system:
 * Orders Book (the services to get or place an order, expects the database as env vars - for instance, docker link. and expects the phones catalog same via the env vars)
 
 
-h2. Test
+## Test
 
 You may benefit from the maven here too.
 
-bc. mvn clean verify
+```mvn clean verify```
 
 This will compile applications. Run some unit tests for both microservices. 
 Then it will create a test database container with some records. And it will create the two containers for both microservices. 
@@ -44,7 +44,7 @@ Have fun.
 Oh, you need a running docker service locally and your user should have access to it.
 
 
-h2. Improvements
+## Improvements
 
 It seems that the system is missing the Customers Registry. A dedicated CRM Service can be added to register customers and then just refer those in orders.
 
